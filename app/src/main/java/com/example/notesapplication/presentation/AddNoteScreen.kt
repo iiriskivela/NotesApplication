@@ -1,9 +1,18 @@
 package com.example.notesapplication.presentation
 
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ContentResolver
 import android.content.Context
+import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -22,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -30,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,7 +61,11 @@ import coil.compose.rememberImagePainter
 import com.ahmedapps.roomdatabase.presentation.NotesEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.FileProvider
+import com.example.notesapplication.MainActivity
 import java.io.File
 import java.io.FileOutputStream
 
@@ -63,12 +78,48 @@ fun AddNoteScreen(
 
     val context = LocalContext.current
 
-    var selectedImageUri by remember {
-        mutableStateOf<Uri?>(null)
-    }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    var selectedImageFile by remember {
-        mutableStateOf<File?>(null)
+    var selectedImageFile by remember { mutableStateOf<File?>(null) }
+
+    val sensorManager = LocalContext.current.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+    val accelerometer: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
+    DisposableEffect(sensorManager) {
+        val listener = object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent?) {
+                event?.let {
+                    if (it.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+                        val gravity = FloatArray(3)
+                        val alpha = 0.8f
+                        gravity[0] = alpha * gravity[0] + (1 - alpha) * it.values[0]
+                        gravity[1] = alpha * gravity[1] + (1 - alpha) * it.values[1]
+                        gravity[2] = alpha * gravity[2] + (1 - alpha) * it.values[2]
+
+                        val x = it.values[0] - gravity[0]
+                        val y = it.values[1] - gravity[1]
+                        val z = it.values[2] - gravity[2]
+
+                        val threshold = 8f // You may need to adjust this threshold based on testing
+
+                        if (x > threshold || y > threshold || z > threshold) {
+                            Log.d("Sensor", "Phone lifted up")
+                            triggerNotification(context)
+                        }
+                    }
+                }
+            }
+
+            override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+                // Not used in this example
+            }
+        }
+
+        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+
+        onDispose {
+            sensorManager.unregisterListener(listener)
+        }
     }
 
     val singlePhotoPickerLauncher = rememberLauncherForActivityResult(
@@ -159,30 +210,85 @@ fun AddNoteScreen(
                         contentScale = ContentScale.Crop
                     )
                 }
-                /*selectedImageFile?.let { file ->
-                    Image(
-                        painter = rememberImagePainter(file),
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }*/
-                /*selectedImageUri?.let { uri ->
-                    Image(
-                        painter = rememberImagePainter(uri.toString()), //(uri)
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }*/
             }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Button(
+                onClick = {
+                    createNotificationChannel(context)
+                    enableNotifications(context)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Enable Notifications", color = Color.White)
+            }
+        }
 
         }
 
     }
 
+}
+
+fun triggerNotification(context: Context) {
+    val intent = Intent(context, MainActivity::class.java)
+    val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+    val builder = NotificationCompat.Builder(context, "channelId")
+        //.setSmallIcon(R.drawable.notification_icon)
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle("Phone Lifted Up")
+        .setContentText("You lifted up your phone!")
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        .setContentIntent(pendingIntent)
+
+    try {
+        with(NotificationManagerCompat.from(context)) {
+            notify(1234, builder.build())
+        }
+    } catch (e: SecurityException) {
+        // Handle SecurityException gracefully
+        e.printStackTrace()
+    }
+}
+
+fun createNotificationChannel(context: Context) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val name = "My Channel"
+        val descriptionText = "Channel Description"
+        val importance = NotificationManager.IMPORTANCE_DEFAULT
+        val channel = NotificationChannel("channelId", name, importance).apply {
+            description = descriptionText
+            enableLights(true)
+            //lightColor = Color.RED
+        }
+        val notificationManager: NotificationManager =
+            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+}
+
+fun enableNotifications(context: Context) {
+    val notificationManager =
+        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val notificationId = 1
+    val intent = Intent(context, MainActivity::class.java)
+    val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
+    val notification = NotificationCompat.Builder(context, "channelId")
+        .setSmallIcon(android.R.drawable.ic_dialog_info)
+        .setContentTitle("Notifications Enabled")
+        .setContentText("You can now receive notifications!")
+        .setContentIntent(pendingIntent) //opens app
+        .setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_HIGH)
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        .build()
+
+    notificationManager.notify(notificationId, notification)
 }
 
 fun copyImageToAppStorage(context: Context, contentResolver: ContentResolver, imageUri: Uri): File? {
