@@ -1,8 +1,17 @@
 package com.example.notesapplication
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.view.CameraController
+import androidx.camera.view.LifecycleCameraController
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,15 +49,25 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Camera
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
@@ -59,6 +78,7 @@ import com.ahmedapps.roomdatabase.presentation.NotesEvent
 import com.example.notesapplication.presentation.AddNoteScreen
 import com.example.notesapplication.presentation.NoteState
 import com.example.notesapplication.presentation.NotesViewModel
+import kotlinx.coroutines.launch
 import java.io.File
 
 data class Message(val author: String, val body: String, val note: Note?)
@@ -113,9 +133,7 @@ fun MessageCard(
             Surface(
                 shape = MaterialTheme.shapes.medium,
                 shadowElevation = 1.dp,
-                // surfaceColor color will be changing gradually from primary to surface
                 color = surfaceColor,
-                // animateContentSize will change the Surface size gradually
                 modifier = Modifier
                     .animateContentSize()
                     .padding(1.dp)
@@ -123,8 +141,6 @@ fun MessageCard(
                 Text(
                     text = msg.body,
                     modifier = Modifier.padding(all = 4.dp),
-                    // If the message is expanded, we display all its content
-                    // otherwise we only display the first line
                     maxLines = if (isExpanded) Int.MAX_VALUE else 1,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -133,17 +149,7 @@ fun MessageCard(
     }
 }
 
-/*
-//@Preview(showBackground = true)
-@Composable
-fun PreviewMessageCard() {
-    Surface {
-        MessageCard(
-            msg = Message("Iiris", "Hi there!")
-        )
-    }
-}*/
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Conversation(
     navController: NavController,
@@ -163,19 +169,6 @@ fun Conversation(
                     .padding(16.dp)
             ) {
                 // Settings button at the top left
-
-
-                // Home button at the top right
-                /*FloatingActionButton(
-                    onClick = {
-                        navController.navigate("NotesScreen")
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = null
-                    )
-                }*/
                 FloatingActionButton(
                     onClick = {
                         navController.navigate("AddNoteScreen")
@@ -183,7 +176,17 @@ fun Conversation(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = null
+                        contentDescription = "Settings"
+                    )
+                }
+                FloatingActionButton(
+                    onClick = {
+                        navController.navigate("Camera")
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Camera,
+                        contentDescription = "Settings"
                     )
                 }
             }
@@ -193,10 +196,3 @@ fun Conversation(
         }
     }
 }
-/*
-@Preview(showBackground = true)
-@Composable
-fun PreviewConversation() {
-    val navController = rememberNavController()
-    Conversation(navController, SampleData.conversationSample)
-}*/

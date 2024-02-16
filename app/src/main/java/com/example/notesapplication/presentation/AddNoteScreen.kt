@@ -77,6 +77,7 @@ fun AddNoteScreen(
 ) {
 
     val context = LocalContext.current
+    val notificationClass = Notifications(context)
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -104,7 +105,7 @@ fun AddNoteScreen(
 
                         if (x > threshold || y > threshold || z > threshold) {
                             Log.d("Sensor", "Phone lifted up")
-                            triggerNotification(context)
+                            notificationClass.triggerNotification(context)
                         }
                     }
                 }
@@ -218,8 +219,8 @@ fun AddNoteScreen(
         ) {
             Button(
                 onClick = {
-                    createNotificationChannel(context)
-                    enableNotifications(context)
+                    notificationClass.createNotificationChannel(context)
+                    notificationClass.enableNotifications(context)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -233,63 +234,11 @@ fun AddNoteScreen(
 
 }
 
-fun triggerNotification(context: Context) {
-    val intent = Intent(context, MainActivity::class.java)
-    val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
 
-    val builder = NotificationCompat.Builder(context, "channelId")
-        //.setSmallIcon(R.drawable.notification_icon)
-        .setSmallIcon(android.R.drawable.ic_dialog_info)
-        .setContentTitle("Phone Lifted Up")
-        .setContentText("You lifted up your phone!")
-        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-        .setContentIntent(pendingIntent)
 
-    try {
-        with(NotificationManagerCompat.from(context)) {
-            notify(1234, builder.build())
-        }
-    } catch (e: SecurityException) {
-        // Handle SecurityException gracefully
-        e.printStackTrace()
-    }
-}
 
-fun createNotificationChannel(context: Context) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val name = "My Channel"
-        val descriptionText = "Channel Description"
-        val importance = NotificationManager.IMPORTANCE_DEFAULT
-        val channel = NotificationChannel("channelId", name, importance).apply {
-            description = descriptionText
-            enableLights(true)
-            //lightColor = Color.RED
-        }
-        val notificationManager: NotificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
-    }
-}
 
-fun enableNotifications(context: Context) {
-    val notificationManager =
-        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    val notificationId = 1
-    val intent = Intent(context, MainActivity::class.java)
-    val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
 
-    val notification = NotificationCompat.Builder(context, "channelId")
-        .setSmallIcon(android.R.drawable.ic_dialog_info)
-        .setContentTitle("Notifications Enabled")
-        .setContentText("You can now receive notifications!")
-        .setContentIntent(pendingIntent) //opens app
-        .setAutoCancel(true)
-        .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .build()
-
-    notificationManager.notify(notificationId, notification)
-}
 
 fun copyImageToAppStorage(context: Context, contentResolver: ContentResolver, imageUri: Uri): File? {
     val inputStream = contentResolver.openInputStream(imageUri)
