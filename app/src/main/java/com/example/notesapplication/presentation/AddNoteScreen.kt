@@ -235,11 +235,6 @@ fun AddNoteScreen(
 }
 
 
-
-
-
-
-
 fun copyImageToAppStorage(context: Context, contentResolver: ContentResolver, imageUri: Uri): File? {
     val inputStream = contentResolver.openInputStream(imageUri)
     val filesDir = context.filesDir
