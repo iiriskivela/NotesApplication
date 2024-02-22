@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
             setKeepOnScreenCondition {
                 !viewModel2.isReady.value
             }
-            setOnExitAnimationListener { screen ->
+            /*setOnExitAnimationListener { screen ->
                 val zoomX = ObjectAnimator.ofFloat(
                     screen.iconView,
                     View.SCALE_X,
@@ -125,7 +125,7 @@ class MainActivity : ComponentActivity() {
                 zoomX.start()
                 zoomY.start()
                 rotation.start()
-            }
+            }*/
         }
 
         if(!hasRequiredPermissions()) {
