@@ -14,7 +14,7 @@ class Notifications(private val context: Context) {
 
     fun triggerNotification(context: Context) {
         val intent = Intent(context, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val builder = NotificationCompat.Builder(context, "channelId")
             //.setSmallIcon(R.drawable.notification_icon)
@@ -55,7 +55,7 @@ class Notifications(private val context: Context) {
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notificationId = 1
         val intent = Intent(context, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         val notification = NotificationCompat.Builder(context, "channelId")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
